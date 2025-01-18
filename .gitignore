@@ -1,3 +1,4 @@
 /server/node_modules
+/model/venv
 *.env
 *.venv
