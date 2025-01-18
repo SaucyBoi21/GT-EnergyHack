@@ -14,31 +14,51 @@ router.get("/api/token", (req, res) => {
 
 // weather API routes
 router.get("/noaa/solar-irradience", async (req, res) => {
-  const { startDate, endDate, locationId, stationId} = req.query;
+  const { startDate, endDate, locationId} = req.query;
 
-  if (!startDate || !endDate || !locationId || !stationId) {
+  if (!startDate || !endDate || !locationId) {
     return res.status(400).json({ error: "Missing input parameters" });
   }
 
   try {
-    const response = await axios.get(NOAA_API_URL, {
+    const responseTAVG = await axios.get(NOAA_API_URL, {
       headers: { token: NOAA_API_TOKEN },
       params: {
         datasetid: "GSOM",
-        datatypeid: "TEMP",
+        datatypeid: "TAVG",
         startdate: startDate,
         enddate: endDate,
-        locationid: locationId,
-        stationid: stationId,
-        units: "metric",
-        limit: 1000,
+        locationId: locationId,
       },
     });
 
-    const solarData = response.data.results;
+    const responsePRCP = await axios.get(NOAA_API_URL, {
+      headers: { token: NOAA_API_TOKEN },
+      params: {
+        datasetid: "GSOM",
+        datatypeid: "PRCP",
+        startdate: startDate,
+        enddate: endDate,
+        locationId: locationId,
+      },
+    });
+
+    const responseAWND = await axios.get(NOAA_API_URL, {
+      headers: { token: NOAA_API_TOKEN },
+      params: {
+        datasetid: "GSOM",
+        datatypeid: "AWND",
+        startdate: startDate,
+        enddate: endDate,
+        locationId: locationId,
+      },
+    });
+
+    const solarData = {"TAVG": responseTAVG.data.results, "PRCP": responsePRCP.data.results, "AWND": responseAWND.data.results};
 
     res.json(solarData);
-  } catch (error) {
+  } catch (e) {
+    console.log(e.response);
     return res.status(500).json({ error: "Failed to fetch data" });
   }
 });
