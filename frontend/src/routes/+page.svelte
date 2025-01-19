@@ -241,9 +241,9 @@
     {:else if error}
         <p class="error glass" in:slide={{duration: 300}}>{error}</p>
     {:else}
-        <h1 class="title glass" in:slide={{duration: 300, delay: 100}}>
+        <h2 class="" in:slide={{duration: 300, delay: 100}}>
             Weather for {currentLocation.name}
-        </h1>
+        </h2>
         
         <LocationMap 
             lat={currentLocation.lat} 
@@ -252,7 +252,6 @@
         />
         
         <div class="weather-section" in:fade={{duration: 400, delay: 200}}>
-            <h2>Weather Forecast</h2>
             <WeatherForecast 
                 {weatherData} 
                 {openModal} 
@@ -265,6 +264,7 @@
                 bind:solarData 
                 bind:selectedDate
                 {loadingIrradiance}
+                {weatherData}
             />
         {/if}
 

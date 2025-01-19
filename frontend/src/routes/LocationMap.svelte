@@ -140,4 +140,8 @@
     :global(.leaflet-marker-dragging) {
         cursor: grabbing !important;
     }
+
+    :global(.leaflet-control-attribution) {
+        display: none !important;
+    }
 </style>

@@ -1,6 +1,7 @@
 <script>
     import { scale } from 'svelte/transition';
     import { quintOut } from 'svelte/easing';
+    import { extractWindSpeed } from '$lib/utils';
 
     export let weatherData = [];
     export let openModal;
@@ -36,6 +37,7 @@
 
 <div class="forecast-grid">
     {#each weatherData as day, i}
+    {console.log(extractWindSpeed(day.windSpeed))}
         <div 
             class="forecast-card glass {i === 0 ? 'featured-card' : ''}"
             on:click={() => openModal(day)}

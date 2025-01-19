@@ -1,13 +1,18 @@
 <script>
     import Chart from 'chart.js/auto';
     import { onMount } from 'svelte';
+    import { extractWindSpeed, getPrediction } from '$lib/utils';
 
     export let solarData = {};
     export let selectedDate = new Date().toISOString().slice(0, 10);
     export let loadingIrradiance = false;
 
+    // Add new props for weather data
+    export let weatherData = [];
+
     let chartCanvas;
     let solarChart;
+    let interpolatedValue;
 
     function interpolateSolarValue(date) {
         if (!Object.keys(solarData).length) return 0;
@@ -45,10 +50,8 @@
         }
     }
 
-    $: interpolatedValue = interpolateSolarValue(selectedDate);
-
     // Add a watch for selectedDate changes to trigger chart update
-    $: if (selectedDate) {
+    $: if (selectedDate || solarData) {
         interpolatedValue = interpolateSolarValue(selectedDate);
     }
 
@@ -163,56 +166,26 @@
     }
 
     // Add this to handle row animations
-    onMount(() => {
+    onMount(async () => {
         const rows = document.querySelectorAll('tbody tr');
         rows.forEach((row, index) => {
             row.style.setProperty('--index', index);
         });
+        modelPrediction = await getPrediction(weatherData[0].temperature, weatherData[0].windSpeed);
     });
 
     // Add these new variables
     let modelPrediction = null;
     let modelLoading = false;
 
-    async function getPrediction() {
-        modelLoading = true;
-        try {
-            // Example inputs - replace with actual features your model expects
-            const inputs = [[
-                // parseFloat(interpolatedValue), // Solar irradiance
-                25.86,
-                0.018576382,
-                0.0162,
-                21.851
-                // Add other required features here
-                // Your model expects 4 features total
-            ]];
-
-            const response = await fetch('http://127.0.0.1:5000/predict', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ inputs })
+    // Modify the watch to include more logging
+    $: {
+        if (interpolatedValue) {
+            console.log('Values changed:', {
+                interpolatedValue,
             });
-
-            const data = await response.json();
-            if (data.predictions) {
-                modelPrediction = data.predictions[0];
-            } else {
-                throw new Error('No predictions in response');
-            }
-        } catch (err) {
-            console.error('Failed to get model prediction:', err);
-            modelPrediction = null;
-        } finally {
-            modelLoading = false;
+            modelPrediction = getPrediction(weatherData[0].temperature, weatherData[0].windSpeed);
         }
-    }
-
-    // Watch interpolatedValue changes to trigger prediction
-    $: if (interpolatedValue) {
-        getPrediction();
     }
 </script>
 
@@ -297,12 +270,7 @@
         </div>
     </div>
 
-    {#if modelLoading}
-        <div class="model-prediction loading">
-            <div class="loading-spinner"></div>
-            <span>Calculating prediction...</span>
-        </div>
-    {:else if modelPrediction !== null}
+    {#if !isNaN(modelPrediction)}
         <div class="model-prediction">
             <h3>Model Prediction</h3>
             <div class="prediction-value">{modelPrediction.toFixed(2)}</div>
