@@ -1,9 +1,32 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
 		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+		<meta name="viewport" content="width=device-width" />
+		<style>
+			:root {
+				--primary-color: rgb(76, 0, 255);
+				--glass-bg: rgba(255, 255, 255, 0.1);
+				--glass-border: rgba(255, 255, 255, 0.1);
+				--glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+			}
+			body {
+				margin: 0;
+				min-height: 100vh;
+				background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+				color: #e9ecef;
+				font-family: 'Inter', system-ui, -apple-system, sans-serif;
+			}
+			.glass {
+				background: var(--glass-bg);
+				backdrop-filter: blur(10px);
+				-webkit-backdrop-filter: blur(10px);
+				border: 1px solid var(--glass-border);
+				box-shadow: var(--glass-shadow);
+			}
+		</style>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

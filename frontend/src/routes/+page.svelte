@@ -1,34 +1,68 @@
 <script>
     import { onMount } from 'svelte';
+    import { browser } from '$app/environment';
+    import { fade, slide, scale } from 'svelte/transition';
+    import { quintOut } from 'svelte/easing';
+    import Chart from 'chart.js/auto';
+
+    import LocationSearch from './LocationSearch.svelte';
+    import WeatherForecast from './WeatherForecast.svelte';
+    import SolarDataSection from './SolarDataSection.svelte';
+    import WeatherModal from './WeatherModal.svelte';
 
     // Weather and solar data
     let weatherData = [];
     let solarData = [];
-    let hourlyIrradianceData = [];
     let loading = true;
     let error = null;
     let searchLocation = '';
     let currentLocation = { lat: 33.7490, lon: -84.3880, name: 'Atlanta, GA' };
+    let selectedDay = null;
+    let showModal = false;
+    let selectedDate = new Date().toISOString().slice(0, 10);
 
-    // Comprehensive weather icons mapping
+    // Weather icons
     const weatherIcons = {
         'Clear': '☀️',
         'Sunny': '☀️',
+        'Mostly Clear': '🌤️',
         'Partly Cloudy': '⛅',
         'Mostly Cloudy': '🌥️',
         'Cloudy': '☁️',
         'Rain': '🌧️',
-        'Showers': '🌧️',
+        'Light Rain': '🌧️',
+        'Heavy Rain': '⛈️',
+        'Showers': '🌦️',
+        'Scattered Showers': '🌦️',
         'Snow': '❄️',
+        'Light Snow': '🌨️',
+        'Heavy Snow': '⛄',
         'Thunderstorm': '⛈️',
         'Windy': '💨',
         'Fog': '🌫️',
-        'Haze': '🌫️'
+        'Haze': '🌫️',
+        'Partly Sunny': '🌤️',
+        'Mostly Sunny': '🌤️',
+        'Rain and Snow': '🌨️',
+        'Sleet': '🌨️'
     };
+
+    function getWeatherIcon(forecast) {
+        // Try exact match first
+        if (weatherIcons[forecast]) {
+            return weatherIcons[forecast];
+        }
+        
+        // Try partial match
+        const key = Object.keys(weatherIcons).find(k => 
+            forecast.toLowerCase().includes(k.toLowerCase())
+        );
+        
+        return key ? weatherIcons[key] : '🌈';
+    }
 
     async function geocodeLocation() {
         try {
-            // Use OpenStreetMap Nominatim for free geocoding
             const response = await fetch(
                 `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchLocation)}`
             );
@@ -41,7 +75,7 @@
                     name: data[0].display_name
                 };
                 
-                // Reset and fetch all data
+                // Reset and fetch data
                 loading = true;
                 error = null;
                 await Promise.all([
@@ -86,203 +120,340 @@
             
             const data = await response.json();
             
-            // Extract annual and monthly solar data
-            solarData = [
-                { 
-                    month: 'Annual Average', 
-                    value: data.outputs.avg_dni.annual 
-                },
-                ...Object.entries(data.outputs.avg_dni.monthly).map(([month, value]) => ({ 
-                    month, 
-                    value 
-                }))
-            ];
+            const monthNames = {
+                'jan': 'January', 'feb': 'February', 'mar': 'March', 
+                'apr': 'April', 'may': 'May', 'jun': 'June', 
+                'jul': 'July', 'aug': 'August', 'sep': 'September', 
+                'oct': 'October', 'nov': 'November', 'dec': 'December'
+            };
+            
+            solarData = {
+                "Annual Average": data.outputs.avg_dni.annual,
+                ...Object.entries(data.outputs.avg_dni.monthly).reduce((acc, [month, value]) => ({
+                    ...acc,
+                    [monthNames[month.toLowerCase()]]: value
+                }), {})
+            };
         } catch (err) {
             error = 'Failed to fetch solar irradiance data';
             console.error(err);
         }
     }
 
+    function handleSearch(e) {
+        e.preventDefault();
+        if (searchLocation.trim()) {
+            geocodeLocation();
+        }
+    }
+
+    function openModal(day) {
+        selectedDay = day;
+        showModal = true;
+    }
+
+    function closeModal() {
+        showModal = false;
+        selectedDay = null;
+    }
+
     onMount(async () => {
         await Promise.all([
             fetchWeatherData(), 
-            fetchSolarIrradiance(), 
+            fetchSolarIrradiance()
         ]);
         loading = false;
     });
-
-    // Helper to get detailed weather description
-    function getDetailedWeatherInfo(day) {
-        return `
-            Detailed Forecast: ${day.detailedForecast}
-            Chance of Precipitation: ${day.probabilityOfPrecipitation?.value || 'N/A'}%
-            Humidity: ${day.relativeHumidity?.value || 'N/A'}%
-            Wind: ${day.windSpeed} ${day.windDirection}
-        `;
-    }
 </script>
 
+<svelte:window on:keydown={(e) => {
+    if (e.key === 'Escape' && showModal) {
+        closeModal();
+    }
+}}/>
+
 <main class="container">
-    <div class="location-search">
-        <input 
-            type="text" 
-            bind:value={searchLocation} 
-            placeholder="Enter a location (e.g., New York, NY)"
-        >
-        <button on:click={geocodeLocation}>Search</button>
-    </div>
+    <div class="background-gradient"></div>
+    
+    <LocationSearch 
+        bind:searchLocation 
+        {handleSearch}
+    />
 
     {#if loading}
-        <p>Loading weather and solar data...</p>
+        <div class="loading-container" in:fade>
+            <div class="loading-spinner"></div>
+            <p>Loading weather and solar data...</p>
+        </div>
     {:else if error}
-        <p class="error">{error}</p>
+        <p class="error glass" in:slide={{duration: 300}}>{error}</p>
     {:else}
-        <h1>Weather for {currentLocation.name}</h1>
+        <h1 class="title glass" in:slide={{duration: 300, delay: 100}}>
+            Weather for {currentLocation.name}
+        </h1>
         
-        <div class="weather-section">
+        <div class="weather-section" in:fade={{duration: 400, delay: 200}}>
             <h2>Weather Forecast</h2>
-            <div class="forecast-grid">
-                {#each weatherData as day}
-                    <div class="forecast-card">
-                        <h3>{day.name}</h3>
-                        <div class="weather-icon">
-                            {weatherIcons[day.shortForecast] || '🌈'}
-                        </div>
-                        <p>Temperature: {day.temperature}°{day.temperatureUnit}</p>
-                        <p>Forecast: {day.shortForecast}</p>
-                        <details>
-                            <summary>More Details</summary>
-                            <pre>{getDetailedWeatherInfo(day)}</pre>
-                        </details>
-                    </div>
-                {/each}
-            </div>
+            <WeatherForecast 
+                {weatherData} 
+                {openModal} 
+                {getWeatherIcon}
+            />
         </div>
 
-        <div class="solar-section">
-            <h2>Solar Irradiance Data</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Month</th>
-                        <th>DNI (kWh/m²/day)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {#each solarData as data}
-                        <tr>
-                            <td>{data.month}</td>
-                            <td>{data.value.toFixed(2)}</td>
-                        </tr>
-                    {/each}
-                </tbody>
-            </table>
-        </div>
+        {#if solarData && Object.keys(solarData).length > 0}
+            <SolarDataSection 
+                bind:solarData 
+                bind:selectedDate
+            />
+        {/if}
 
-        <div class="hourly-solar-section">
-            <h2>Hourly Solar Irradiance Forecast</h2>
-            {#if hourlyIrradianceData.length > 0}
-                {#each hourlyIrradianceData as dayData}
-                    <div class="day-irradiance">
-                        <h3>{new Date(dayData.date).toLocaleDateString()}</h3>
-                        {#if dayData.forecasts.length > 0}
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Time</th>
-                                        <th>DNI (W/m²)</th>
-                                        <th>DHI (W/m²)</th>
-                                        <th>GHI (W/m²)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {#each dayData.forecasts as hourData}
-                                        <tr>
-                                            <td>{hourData.time}</td>
-                                            <td>{hourData.dni.toFixed(2)}</td>
-                                            <td>{hourData.dhi.toFixed(2)}</td>
-                                            <td>{hourData.ghi.toFixed(2)}</td>
-                                        </tr>
-                                    {/each}
-                                </tbody>
-                            </table>
-                        {:else}
-                            <p>No hourly irradiance data available for this day.</p>
-                        {/if}
-                    </div>
-                {/each}
-            {:else}
-                <p>No hourly irradiance data available.</p>
-            {/if}
-        </div>
+        <WeatherModal 
+            bind:showModal 
+            bind:selectedDay 
+            {closeModal} 
+            {getWeatherIcon}
+        />
     {/if}
 </main>
 
 <style>
+    /* Add at the top of existing styles */
+    :global(.glass) {
+        position: relative;
+        overflow: hidden;
+    }
+
+    :global(.glass::before) {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 200%;
+        height: 100%;
+        background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.01),
+            transparent
+        );
+        transition: 0.5s;
+        pointer-events: none;
+    }
+
+    :global(.glass:hover::before) {
+        left: 100%;
+    }
+
+    .background-gradient {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: 
+            radial-gradient(circle at 0% 0%, rgba(76, 0, 255, 0.15), transparent 50%),
+            radial-gradient(circle at 100% 100%, rgba(76, 0, 255, 0.15), transparent 50%);
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    :global(body) {
+        margin: 0;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        color: #e9ecef;
+        overflow-x: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    :global(html) {
+        min-height: 100vh;
+        background: #1a1a2e;
+    }
+
     .container {
+        position: relative;
+        z-index: 1;
+        width: 100%;
         max-width: 1200px;
         margin: 0 auto;
-        padding: 20px;
-        font-family: Arial, sans-serif;
+        padding: 2rem;
+        font-family: 'Inter', system-ui, sans-serif;
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .glass {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
     }
 
     .location-search {
         display: flex;
-        margin-bottom: 20px;
+        gap: 1rem;
+        padding: 1rem;
+        margin-bottom: 2rem;
     }
 
     .location-search input {
         flex-grow: 1;
-        padding: 10px;
-        margin-right: 10px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
+        padding: 0.75rem 1rem;
+        border: none;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        color: #e9ecef;
+        transition: all 0.3s ease;
+    }
+
+    .location-search input:focus {
+        outline: none;
+        background: rgba(255, 255, 255, 0.15);
     }
 
     .location-search button {
-        padding: 10px 15px;
-        background-color: #007bff;
+        padding: 0.75rem 1.5rem;
+        background: rgba(76, 0, 255, 0.6);
         color: white;
         border: none;
-        border-radius: 4px;
+        border-radius: 8px;
         cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .location-search button:hover {
+        background: rgba(76, 0, 255, 0.8);
+        transform: translateY(-1px);
+    }
+
+    .title {
+        padding: 1rem 2rem;
+        margin-bottom: 2rem;
+        text-align: center;
     }
 
     .forecast-grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 15px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin: 2rem 0;
     }
 
     .forecast-card {
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        padding: 15px;
-        text-align: center;
-        width: calc(20% - 15px);
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        padding: 1.5rem;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        position: relative;
+    }
+
+    .forecast-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+        background: rgba(255, 255, 255, 0.08);
     }
 
     .weather-icon {
         font-size: 3rem;
-        margin: 10px 0;
+        margin: 1rem 0;
     }
 
-    details {
-        margin-top: 10px;
-        text-align: left;
+    .temperature {
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin: 0.5rem 0;
     }
 
-    pre {
-        background-color: #f4f4f4;
-        padding: 10px;
-        border-radius: 4px;
-        white-space: pre-wrap;
-        font-size: 0.8rem;
+    .forecast {
+        color: #adb5bd;
+    }
+
+    .details-icon {
+        position: absolute;
+        bottom: 1rem;
+        right: 1rem;
+        color: rgba(255, 255, 255, 0.5);
+        transition: all 0.2s ease;
+    }
+
+    .forecast-card:hover .details-icon {
+        color: rgba(255, 255, 255, 0.8);
+        transform: scale(1.1);
     }
 
     .solar-section {
-        margin-top: 30px;
+        padding: 2rem;
+        margin-top: 3rem;
+    }
+
+    .chart-container {
+        width: 100%;
+        max-width: 800px;
+        height: 400px;
+        margin: 20px auto;
+        background-color: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        padding: 20px;
+    }
+
+    .solar-data-table {
+        width: 100%;
+        max-width: 800px;
+        margin: 20px auto;
+        border-collapse: collapse;
+    }
+
+    .solar-data-table th, 
+    .solar-data-table td {
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 10px;
+        text-align: left;
+    }
+
+    .interpolator-controls {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        z-index: 10;
+    }
+
+    .date-picker {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .date-picker input {
+        padding: 0.5rem;
+        border: none;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.1);
+        color: #e9ecef;
+        font-family: inherit;
+    }
+
+    .date-picker input:focus {
+        outline: none;
+        background: rgba(255, 255, 255, 0.15);
+    }
+
+    .interpolated-value {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        font-size: 0.9rem;
+    }
+
+    .interpolated-value strong {
+        font-size: 1.1rem;
+        color: rgba(76, 0, 255, 0.8);
     }
 
     table {
@@ -291,45 +462,167 @@
     }
 
     th, td {
-        border: 1px solid #ddd;
-        padding: 8px;
+        padding: 1rem;
         text-align: left;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
 
-    .hourly-solar-section {
-        margin-top: 30px;
+    .loading-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        margin: 4rem 0;
     }
 
-    .day-irradiance {
-        margin-bottom: 20px;
-        border: 1px solid #e0e0e0;
-        padding: 15px;
-        border-radius: 5px;
+    .loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 3px solid rgba(255, 255, 255, 0.1);
+        border-top: 3px solid rgba(76, 0, 255, 0.6);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
     }
 
-    .day-irradiance h3 {
-        margin-top: 0;
-        color: #333;
-    }
-
-    .hourly-solar-section table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .hourly-solar-section th, 
-    .hourly-solar-section td {
-        border: 1px solid #ddd;
-        padding: 8px;
-        text-align: left;
-    }
-
-    .hourly-solar-section th {
-        background-color: #f2f2f2;
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
     }
 
     .error {
-        color: red;
+        color: #ff6b6b;
         text-align: center;
+        padding: 1rem 2rem;
+        margin: 2rem 0;
+    }
+
+    details {
+        margin-top: 1rem;
+    }
+
+    summary {
+        cursor: pointer;
+        color: #adb5bd;
+    }
+
+    pre {
+        margin-top: 0.5rem;
+        padding: 1rem;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 8px;
+        font-size: 0.8rem;
+        white-space: pre-wrap;
+    }
+
+    .modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(4px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .modal {
+        position: relative;
+        width: 90%;
+        max-width: 600px;
+        max-height: 90vh;
+        overflow-y: auto;
+        padding: 2rem;
+    }
+
+    .close-button {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: none;
+        border: none;
+        color: #e9ecef;
+        font-size: 2rem;
+        cursor: pointer;
+        padding: 0.5rem;
+        line-height: 1;
+        transition: transform 0.2s;
+    }
+
+    .close-button:hover {
+        transform: scale(1.1);
+    }
+
+    .modal-content {
+        margin-top: 1rem;
+    }
+
+    .modal-weather-info {
+        display: flex;
+        align-items: center;
+        gap: 2rem;
+        margin: 2rem 0;
+    }
+
+    .modal-icon {
+        font-size: 4rem;
+    }
+
+    .modal-main-info {
+        flex: 1;
+    }
+
+    .modal-temp {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin: 0;
+    }
+
+    .modal-forecast {
+        font-size: 1.2rem;
+        color: #adb5bd;
+        margin: 0.5rem 0;
+    }
+
+    .modal-details {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin: 2rem 0;
+        padding: 1.5rem;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 8px;
+    }
+
+    .detail-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .detail-label {
+        color: #adb5bd;
+        font-size: 0.9rem;
+    }
+
+    .detail-value {
+        font-size: 1.2rem;
+        font-weight: 500;
+    }
+
+    .detailed-forecast {
+        margin-top: 2rem;
+        line-height: 1.6;
+    }
+
+    .detailed-forecast h3 {
+        margin-bottom: 1rem;
+        color: #e9ecef;
+    }
+
+    .detailed-forecast p {
+        color: #adb5bd;
     }
 </style>
