@@ -17,12 +17,14 @@ export async function getPrediction(tempFahrenheit, windSpeedMPHAdjacent) {
     try {
         const tempCelsius = (tempFahrenheit - 32) * 5/9;
         const windSpeedMS = extractWindSpeed(windSpeedMPHAdjacent) * 0.44704;
+
+        console.log(tempCelsius, 0.020729454, 0.18200684, windSpeedMS)
         
         const payload = {
             inputs: [[
                 tempCelsius,
-                0.1,
-                0.1,
+                0.020729454,
+                0.18200684,
                 windSpeedMS
             ]]
         };

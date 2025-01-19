@@ -23,6 +23,8 @@
     let selectedDate = new Date().toISOString().slice(0, 10);
     let loadingIrradiance = false; // Add this line
     let lastWorkingLocation = null; // Add this line
+    let isEditing = false;
+    let currentPrediction = null;
 
     // Weather icons
     const weatherIcons = {
@@ -193,15 +195,17 @@
         }
     }
 
-    function handleSearch(e) {
+    async function handleSearch(e) {
         e.preventDefault();
         if (searchLocation.trim()) {
-            geocodeLocation();
+            await geocodeLocation();
+            searchLocation = ''; // Clear the search after submission
         }
     }
 
-    function openModal(day) {
+    async function openModal(day, prediction) {
         selectedDay = day;
+        currentPrediction = await prediction; // Wait for the prediction to resolve
         showModal = true;
     }
 
@@ -224,6 +228,8 @@
         closeModal();
     }
 }}/>
+
+<title>SunPredictor</title>
 
 <main class="container">
     <div class="background-gradient"></div>
@@ -273,6 +279,7 @@
             bind:selectedDay 
             {closeModal} 
             {getWeatherIcon}
+            dayPrediction={currentPrediction}
         />
     {/if}
 </main>

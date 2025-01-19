@@ -1,7 +1,7 @@
 <script>
     import { scale } from 'svelte/transition';
     import { quintOut } from 'svelte/easing';
-    import { extractWindSpeed } from '$lib/utils';
+    import { extractWindSpeed, getPrediction } from '$lib/utils';
 
     export let weatherData = [];
     export let openModal;
@@ -32,15 +32,22 @@
         'Sleet': '🌨️'
     };
 
-    // Remove the isTonight function, we'll use first-child instead
+    // Add function to get prediction for each day
+    async function getDayPrediction(day) {
+        console.log(day.temperature, day.windSpeed)
+        return await getPrediction(day.temperature, day.windSpeed);
+    }
+
+    // Pre-calculate predictions for all days
+    $: predictions = weatherData.map(async (day) => getDayPrediction(day));
 </script>
 
 <div class="forecast-grid">
     {#each weatherData as day, i}
-    {console.log(extractWindSpeed(day.windSpeed))}
+        {@const prediction = predictions[i]}
         <div 
             class="forecast-card glass {i === 0 ? 'featured-card' : ''}"
-            on:click={() => openModal(day)}
+            on:click={() => openModal(day, prediction)}
             in:scale={{
                 duration: 400,
                 delay: i * 50,
@@ -122,15 +129,15 @@
     .forecast-card:not(.featured-card) {
         display: flex;
         flex-direction: column;
-        min-height: 180px; /* Increased from 140px */
-        max-height: 200px; /* Increased from 160px */
+        min-height: 200px; /* Increased from 140px */
+        max-height: 240px; /* Increased from 160px */
         padding: 1rem;
         position: relative;
     }
 
     .featured-card {
         grid-row: span 2;
-        max-height: 400px; /* Increased from 320px */
+        max-height: 440px; /* Increased from 320px */
     }
 
     h3 {

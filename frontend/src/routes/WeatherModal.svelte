@@ -6,14 +6,14 @@
     export let selectedDay = null;
     export let closeModal;
     export let getWeatherIcon;
+    export let dayPrediction; // Add this prop
+
+    // Format the prediction value
+    $: formattedPrediction = dayPrediction ? dayPrediction.toFixed(2) : 'Calculating...';
 </script>
 
-{#if showModal}
-    <div 
-        class="modal-backdrop"
-        on:click={closeModal}
-        transition:fade={{duration: 300}}
-    >
+{#if showModal && selectedDay}
+    <div class="modal-backdrop" on:click|self={closeModal} transition:fade={{duration: 300}}>
         <div 
             class="modal glass"
             on:click|stopPropagation
@@ -61,6 +61,15 @@
                     <div class="detailed-forecast">
                         <h3>Detailed Forecast</h3>
                         <p>{selectedDay.detailedForecast}</p>
+                    </div>
+
+                    <!-- Add prediction section -->
+                    <div class="prediction-section">
+                        <h3>Solar Production Prediction</h3>
+                        <div class="prediction-value">
+                            {formattedPrediction}
+                            <span class="prediction-unit">kWh/m²/day</span>
+                        </div>
                     </div>
                 </div>
             {/if}
@@ -224,5 +233,31 @@
         line-height: 1.6;
         color: rgba(255, 255, 255, 0.8);
         margin: 0;
+    }
+
+    .prediction-section {
+        margin-top: 1.5rem;
+        padding: 1.5rem;
+        background: rgba(76, 0, 255, 0.1);
+        border-radius: 12px;
+        text-align: center;
+    }
+
+    .prediction-section h3 {
+        color: rgba(76, 0, 255, 0.9);
+        font-size: 1rem;
+        margin: 0 0 0.5rem 0;
+    }
+
+    .prediction-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: rgba(76, 0, 255, 0.9);
+    }
+
+    .prediction-unit {
+        font-size: 1rem;
+        color: rgba(76, 0, 255, 0.6);
+        margin-left: 0.5rem;
     }
 </style>
