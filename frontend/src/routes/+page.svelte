@@ -9,6 +9,7 @@
     import WeatherForecast from './WeatherForecast.svelte';
     import SolarDataSection from './SolarDataSection.svelte';
     import WeatherModal from './WeatherModal.svelte';
+    import LocationMap from './LocationMap.svelte';
 
     // Weather and solar data
     let weatherData = [];
@@ -20,6 +21,8 @@
     let selectedDay = null;
     let showModal = false;
     let selectedDate = new Date().toISOString().slice(0, 10);
+    let loadingIrradiance = false; // Add this line
+    let lastWorkingLocation = null; // Add this line
 
     // Weather icons
     const weatherIcons = {
@@ -103,9 +106,11 @@
             const forecastData = await forecastResponse.json();
             
             weatherData = forecastData.properties.periods.slice(0, 11); // Today + 10 days
+            return true;
         } catch (err) {
             error = 'Failed to fetch weather data';
             console.error(err);
+            return false;
         }
     }
 
@@ -127,16 +132,64 @@
                 'oct': 'October', 'nov': 'November', 'dec': 'December'
             };
             
-            solarData = {
-                "Annual Average": data.outputs.avg_dni.annual,
-                ...Object.entries(data.outputs.avg_dni.monthly).reduce((acc, [month, value]) => ({
-                    ...acc,
-                    [monthNames[month.toLowerCase()]]: value
-                }), {})
-            };
+            if (data.outputs) {
+                solarData = {
+                    "Annual Average": data.outputs.avg_dni.annual,
+                    ...Object.entries(data.outputs.avg_dni.monthly).reduce((acc, [month, value]) => ({
+                        ...acc,
+                        [monthNames[month.toLowerCase()]]: value
+                    }), {})
+                };
+                lastWorkingLocation = { ...currentLocation };
+                return true;
+            }
+            return false;
         } catch (err) {
             error = 'Failed to fetch solar irradiance data';
             console.error(err);
+
+            location.reload();
+            return false;
+        }
+    }
+
+    async function handleMapLocationChange({ lat, lon }) {
+        try {
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`
+            );
+            const data = await response.json();
+            
+            if (data) {
+                const newLocation = {
+                    lat,
+                    lon,
+                    name: data.display_name
+                };
+
+                loadingIrradiance = true; // Add this
+                
+                // Try fetching both data types
+                const [weatherSuccess, solarSuccess] = await Promise.all([
+                    fetchWeatherData(),
+                    fetchSolarIrradiance()
+                ]);
+
+                // Only update the location if at least weather data worked
+                if (weatherSuccess) {
+                    currentLocation = newLocation;
+                    if (!solarSuccess && lastWorkingLocation) {
+                        // Silently revert to last working location for solar data
+                        await fetchSolarIrradiance();
+                    }
+                }
+                
+                loadingIrradiance = false; // Add this
+            }
+        } catch (err) {
+            error = 'Failed to get location info';
+            console.error(err);
+            loadingIrradiance = false; // Add this
         }
     }
 
@@ -192,6 +245,12 @@
             Weather for {currentLocation.name}
         </h1>
         
+        <LocationMap 
+            lat={currentLocation.lat} 
+            lon={currentLocation.lon}
+            onLocationChange={handleMapLocationChange}
+        />
+        
         <div class="weather-section" in:fade={{duration: 400, delay: 200}}>
             <h2>Weather Forecast</h2>
             <WeatherForecast 
@@ -205,6 +264,7 @@
             <SolarDataSection 
                 bind:solarData 
                 bind:selectedDate
+                {loadingIrradiance}
             />
         {/if}
 

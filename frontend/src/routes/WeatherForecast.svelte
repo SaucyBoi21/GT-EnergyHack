@@ -37,44 +37,53 @@
 <div class="forecast-grid">
     {#each weatherData as day, i}
         <div 
-            class="forecast-card {i === 0 ? 'first-card' : ''}"
-            on:click={() => i !== 0 && openModal(day)}
+            class="forecast-card glass {i === 0 ? 'featured-card' : ''}"
+            on:click={() => openModal(day)}
             in:scale={{
                 duration: 400,
-                delay: i * 100,
-                easing: quintOut,
-                start: 0.8
+                delay: i * 50,
+                start: 0.95,
+                easing: quintOut
             }}
         >
-            <h3>{day.name}</h3>
-            <div class="weather-icon">
-                {getWeatherIcon(day.shortForecast)}
-            </div>
-            <p class="temperature">{day.temperature}°{day.temperatureUnit}</p>
-            
             {#if i === 0}
+                <!-- Featured card layout -->
+                <h3>{day.name}</h3>
+                <div class="weather-icon">
+                    {getWeatherIcon(day.shortForecast)}
+                </div>
+                <div class="main-temp">
+                    <span class="temperature">{day.temperature}°{day.temperatureUnit}</span>
+                    <span class="feels-like">Feels like {day.apparentTemperature?.value || day.temperature}°</span>
+                </div>
                 <p class="forecast">{day.shortForecast}</p>
-                <div class="details">
-                    <div class="detail-item">
-                        <span class="detail-label">Precipitation</span>
-                        <span class="detail-value">{day.probabilityOfPrecipitation?.value || 0}%</span>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-icon">🌧️</span>
+                        <div class="stat-info">
+                            <span class="stat-value">{day.probabilityOfPrecipitation?.value || 0}%</span>
+                            <span class="stat-label">Rain</span>
+                        </div>
                     </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Humidity</span>
-                        <span class="detail-value">{day.relativeHumidity?.value || 0}%</span>
+                    <div class="stat-item">
+                        <span class="stat-icon">💨</span>
+                        <div class="stat-info">
+                            <span class="stat-value">{day.windSpeed}</span>
+                            <span class="stat-label">Wind</span>
+                        </div>
                     </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Wind</span>
-                        <span class="detail-value">{day.windSpeed} {day.windDirection}</span>
-                    </div>
-                    <p class="detailed-forecast">{day.detailedForecast}</p>
                 </div>
             {:else}
-                <div class="details-link">
-                    <span>View details</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M9 18l6-6-6-6"/>
-                    </svg>
+                <!-- Compact card layout -->
+                <div class="compact-header">
+                    <h3>{day.name}</h3>
+                    <span class="compact-forecast">{day.shortForecast}</span>
+                </div>
+                <div class="compact-content">
+                    <span class="temperature">{day.temperature}°</span>
+                    <div class="weather-icon">
+                        {getWeatherIcon(day.shortForecast)}
+                    </div>
                 </div>
             {/if}
         </div>
@@ -84,175 +93,190 @@
 <style>
     .forecast-grid {
         display: grid;
-        grid-template-columns: 350px repeat(5, 1fr);
-        grid-template-rows: repeat(2, minmax(120px, auto));
+        grid-template-columns: minmax(300px, 1fr) repeat(auto-fit, minmax(150px, 1fr));
         gap: 1rem;
-    }
-
-    .first-card {
-        grid-column: 1;
-        grid-row: 1 / span 2;
-    }
-
-    /* Position other cards */
-    .forecast-card:nth-child(2) { grid-area: 1 / 2; }
-    .forecast-card:nth-child(3) { grid-area: 1 / 3; }
-    .forecast-card:nth-child(4) { grid-area: 1 / 4; }
-    .forecast-card:nth-child(5) { grid-area: 1 / 5; }
-    .forecast-card:nth-child(6) { grid-area: 1 / 6; }
-    .forecast-card:nth-child(7) { grid-area: 2 / 2; }
-    .forecast-card:nth-child(8) { grid-area: 2 / 3; }
-    .forecast-card:nth-child(9) { grid-area: 2 / 4; }
-    .forecast-card:nth-child(10) { grid-area: 2 / 5; }
-    .forecast-card:nth-child(11) { grid-area: 2 / 6; }
-
-    .forecast-card:not(.first-card):nth-child(n+2):nth-child(-n+6) {
-        grid-row: 1;
-    }
-
-    .forecast-card:not(.first-card):nth-child(n+7) {
-        grid-row: 2;
+        padding: 1rem;
+        overflow: hidden;
+        height: fit-content;
+        min-height: 0; /* This helps with Grid layout containment */
     }
 
     .forecast-card {
+        background: rgba(26, 26, 46, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        padding: 1.5rem;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        overflow: hidden;
+    }
+
+    .forecast-card:hover {
+        transform: translateY(-2px);
+        background: rgba(26, 26, 46, 0.98);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .forecast-card:not(.featured-card) {
         display: flex;
         flex-direction: column;
-        align-items: center;
-        padding: 1.2rem;
-        min-height: 120px;
-        background: rgba(0, 0, 0, 0.2);
-        border-radius: 15px;
-        backdrop-filter: blur(5px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        cursor: pointer;
-        transition: all 0.2s ease;
+        min-height: 180px; /* Increased from 140px */
+        max-height: 200px; /* Increased from 160px */
+        padding: 1rem;
+        position: relative;
     }
 
-    .first-card {
+    .featured-card {
         grid-row: span 2;
-        grid-column: 1;
-        padding: 1.5rem;
-    }
-
-    .forecast-card:not(.first-card) {
-        justify-content: center;
-        gap: 0.5rem;
-    }
-
-    .forecast-card:not(.first-card) h3 {
-        font-size: 0.95rem;
-        margin: 0;
-    }
-
-    .forecast-card:not(.first-card) .weather-icon {
-        font-size: 2rem;
-        margin: 0.5rem 0;
-    }
-
-    .forecast-card:not(.first-card) .temperature {
-        font-size: 1.2rem;
-        margin: 0;
-    }
-
-    .details-link {
-        margin-top: auto;
-        font-size: 0.8rem;
-        color: rgba(255, 255, 255, 0.6);
-        display: flex;
-        align-items: center;
-        gap: 0.3rem;
-        transition: color 0.2s;
-    }
-
-    .forecast-card:not(.first-card):hover {
-        transform: translateY(-2px);
-        background: rgba(255, 255, 255, 0.05);
-    }
-
-    .forecast-card:not(.first-card):hover .details-link {
-        color: rgba(255, 255, 255, 0.9);
-    }
-
-    .details {
-        margin-top: 2rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
-        padding-top: 1rem;
+        max-height: 400px; /* Increased from 320px */
     }
 
     h3 {
-        margin-bottom: 0.5rem;
-        font-size: 1.2rem;
-        color: #e9ecef;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #fff;
+        margin: 0 0 1rem 0;
     }
 
     .weather-icon {
-        font-size: 3rem;
+        font-size: 2.5rem;
         margin: 0.5rem 0;
-        transform: scale(1);
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: transform 0.2s ease;
     }
 
     .forecast-card:hover .weather-icon {
         transform: scale(1.1);
     }
 
+    .main-temp {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        margin: 1rem 0;
+    }
+
     .temperature {
-        font-size: 1.5rem;
-        font-weight: bold;
-        color: #e9ecef;
+        font-size: 2.5rem;
+        font-weight: 700;
+        background: linear-gradient(90deg, #fff, #a8b1ff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        line-height: 1;
+    }
+
+    .feels-like {
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.6);
     }
 
     .forecast {
-        margin: 0.5rem 0;
-        opacity: 0.8;
-        color: #e9ecef;
+        font-size: 1rem;
+        color: rgba(255, 255, 255, 0.8);
     }
 
-    .more-details {
-        margin-top: auto;
+    .stats-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+
+    .stat-item {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 12px;
+        transition: transform 0.2s ease;
+    }
+
+    .stat-item:hover {
+        transform: translateY(-2px);
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .stat-icon {
+        font-size: 1.25rem;
+    }
+
+    .stat-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .stat-value {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #fff;
+    }
+
+    .stat-label {
         font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.5);
+    }
+
+    .compact-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: center;
+        margin-top: 0.5rem;
+    }
+
+    .compact-info .temperature {
+        font-size: 1.75rem;
+    }
+
+    .compact-info .forecast {
+        font-size: 0.9rem;
+        text-align: center;
+    }
+
+    .compact-header {
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+
+    .compact-header h3 {
+        margin: 0 0 0.25rem 0;
+    }
+
+    .compact-forecast {
+        font-size: 0.85rem;
         color: rgba(255, 255, 255, 0.6);
-        transition: color 0.2s;
+        display: block;
+        line-height: 1.2;
     }
 
-    .forecast-card:not(.first-card):hover .more-details {
-        color: rgba(255, 255, 255, 0.9);
-    }
-
-    .details-icon {
-        position: absolute;
-        bottom: 10px;
-        right: 10px;
-        color: rgba(255, 255, 255, 0.6);
-        transition: color 0.3s ease;
-    }
-
-    .forecast-card:hover .details-icon {
-        color: rgba(255, 255, 255, 0.9);
-    }
-
-    /* Update sizes for non-first-card */
-    .forecast-card:not(.first-card) {
+    .compact-content {
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: space-between;
+        gap: 0.75rem;
+        flex: 1;
+        justify-content: center;
+        position: absolute;
+        bottom: 1rem;
+        left: 0;
+        right: 0;
     }
 
-    .forecast-card:not(.first-card) h3 {
-        font-size: 1rem;
+    .compact-content .temperature {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
     }
 
-    .forecast-card:not(.first-card) .weather-icon {
-        font-size: 2.5rem;
-        margin: 0.25rem 0;
+    .compact-content .weather-icon {
+        font-size: 2rem;
+        margin: 0;
+        height: 2.5rem; /* Fixed height to ensure consistent spacing */
+        display: flex;
+        align-items: center;
     }
 
-    .forecast-card:not(.first-card) .temperature {
-        font-size: 1.25rem;
-        margin: 0.25rem 0;
+    .forecast-card:not(.featured-card):hover .weather-icon {
+        transform: scale(1.15);
     }
 </style>

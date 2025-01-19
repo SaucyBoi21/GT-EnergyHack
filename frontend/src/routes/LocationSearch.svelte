@@ -6,30 +6,45 @@
 </script>
 
 <form class="search-container" on:submit={handleSearch}>
-    <input 
-        type="text" 
-        bind:value={searchLocation} 
-        placeholder="Enter location (e.g., New York, NY)"
-    >
-    <button type="submit">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <div class="search-wrapper">
+        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="11" cy="11" r="8"/>
             <line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
+        <input 
+            type="text" 
+            bind:value={searchLocation} 
+            placeholder="Search any location..."
+        >
+    </div>
+    <button type="submit">
+        Search
     </button>
 </form>
 
 <style>
     .search-container {
         width: 100%;
-        max-width: 800px;
+        max-width: 600px;
         margin: 2rem auto;
         display: flex;
-        gap: 0.5rem;
-        background: rgba(0, 0, 0, 0.2);
-        backdrop-filter: blur(10px);
+        gap: 1rem;
+    }
+
+    .search-wrapper {
+        flex: 1;
+        position: relative;
+        background: rgba(26, 26, 46, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 12px;
-        padding: 0.5rem;
+        padding: 0.25rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .search-icon {
+        margin-left: 1rem;
+        color: rgba(255, 255, 255, 0.4);
     }
 
     input {
@@ -37,30 +52,29 @@
         background: transparent;
         border: none;
         color: #fff;
-        font-size: 1.1rem;
-        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        padding: 0.75rem;
         outline: none;
     }
 
     input::placeholder {
-        color: rgba(255, 255, 255, 0.5);
+        color: rgba(255, 255, 255, 0.4);
     }
 
     button {
-        background: var(--primary-color);
+        background: linear-gradient(135deg, #4C00FF, #884DFF);
         color: white;
         border: none;
-        border-radius: 8px;
-        width: 42px;
-        height: 42px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        border-radius: 12px;
+        padding: 0 1.5rem;
+        font-size: 0.95rem;
+        font-weight: 500;
         cursor: pointer;
-        transition: transform 0.2s;
+        transition: all 0.2s ease;
     }
 
     button:hover {
-        transform: scale(1.05);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(76, 0, 255, 0.3);
     }
 </style>

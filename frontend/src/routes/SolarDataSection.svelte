@@ -4,6 +4,7 @@
 
     export let solarData = {};
     export let selectedDate = new Date().toISOString().slice(0, 10);
+    export let loadingIrradiance = false;
 
     let chartCanvas;
     let solarChart;
@@ -22,7 +23,7 @@
         
         const currentMonth = monthNames[month];
         const prevMonth = monthNames[(month - 1 + 12) % 12];
-        const nextMonth = monthNames[(month + 1) % 12];
+        const nextMonth = monthNames[month + 1];
         
         const currentMonthValue = solarData[currentMonth];
         const prevMonthValue = solarData[prevMonth];
@@ -46,6 +47,11 @@
 
     $: interpolatedValue = interpolateSolarValue(selectedDate);
 
+    // Add a watch for selectedDate changes to trigger chart update
+    $: if (selectedDate) {
+        interpolatedValue = interpolateSolarValue(selectedDate);
+    }
+
     // Sort and filter data before creating chart or displaying table
     $: sortedData = Object.entries(solarData)
         .filter(([key]) => key !== 'Annual Average')
@@ -65,9 +71,8 @@
 
         const ctx = chartCanvas.getContext('2d');
         
-        // Create gradient for the fill
         const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-        gradient.addColorStop(0, 'rgba(76, 0, 255, 0.4)');
+        gradient.addColorStop(0, 'rgba(76, 0, 255, 0.2)');
         gradient.addColorStop(1, 'rgba(76, 0, 255, 0.0)');
 
         const monthlyData = Object.entries(solarData)
@@ -78,110 +83,6 @@
                 return months.indexOf(a[0]) - months.indexOf(b[0]);
             });
 
-        const chartOptions = {
-            responsive: true,
-            maintainAspectRatio: false,
-            layout: {
-                padding: {
-                    left: 20,
-                    right: 20,
-                    top: 20,
-                    bottom: 10
-                }
-            },
-            plugins: {
-                legend: {
-                    display: false
-                    // labels: {
-                        
-                    //     color: '#e9ecef',
-                    //     font: {
-                    //         family: 'Inter',
-                    //         size: 14
-                    //     },
-                    //     padding: 20,
-                    //     usePointStyle: true,
-                    //     pointStyle: 'circle'
-                    // }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleFont: {
-                        family: 'Inter',
-                        size: 14,
-                        weight: '600'
-                    },
-                    bodyFont: {
-                        family: 'Inter',
-                        size: 13
-                    },
-                    padding: 12,
-                    cornerRadius: 8,
-                    displayColors: false
-                }
-            },
-            scales: {
-                y: {
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.05)',
-                        drawBorder: false
-                    },
-                    ticks: {
-                        color: '#e9ecef',
-                        font: {
-                            family: 'Inter',
-                            size: 12
-                        },
-                        padding: 10,
-                        callback: value => value.toFixed(1)
-                    },
-                    border: {
-                        display: false
-                    }
-                },
-                x: {
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.05)',
-                        drawBorder: false
-                    },
-                    ticks: {
-                        color: '#e9ecef',
-                        font: {
-                            family: 'Inter',
-                            size: 12
-                        },
-                        padding: 10
-                    },
-                    border: {
-                        display: false
-                    }
-                }
-            },
-            elements: {
-                line: {
-                    tension: 0.4,
-                    borderWidth: 3,
-                    borderColor: 'rgba(76, 0, 255, 0.8)'
-                },
-                point: {
-                    radius: 4,
-                    backgroundColor: 'rgba(76, 0, 255, 1)',
-                    borderColor: 'white',
-                    borderWidth: 2,
-                    hoverRadius: 6,
-                    hoverBorderWidth: 3
-                }
-            },
-            interaction: {
-                intersect: false,
-                mode: 'index'
-            },
-            animation: {
-                duration: 1000,
-                easing: 'easeOutQuart'
-            }
-        };
-        
         solarChart = new Chart(ctx, {
             type: 'line',
             data: {
@@ -190,11 +91,70 @@
                     label: 'Solar Irradiance (kWh/m²/day)',
                     data: monthlyData.map(([, value]) => value),
                     backgroundColor: gradient,
+                    borderColor: 'rgba(76, 0, 255, 0.8)',
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: 'rgba(76, 0, 255, 0.8)',
+                    pointHoverRadius: 6,
+                    pointHoverBorderWidth: 2,
                     fill: true,
-                    cubicInterpolationMode: 'monotone'
+                    tension: 0.4
                 }]
             },
-            options: chartOptions
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleColor: '#fff',
+                        bodyColor: '#fff',
+                        padding: 12,
+                        displayColors: false,
+                        callbacks: {
+                            label: (context) => `${context.parsed.y.toFixed(2)} kWh/m²/day`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        },
+                        ticks: {
+                            color: 'rgba(255, 255, 255, 0.7)',
+                            font: {
+                                size: 11
+                            },
+                            callback: (value) => value.toFixed(1)
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        },
+                        ticks: {
+                            color: 'rgba(255, 255, 255, 0.7)',
+                            font: {
+                                size: 11
+                            }
+                        }
+                    }
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'nearest'
+                },
+                animation: {
+                    duration: 750,
+                    easing: 'easeInOutQuart'
+                }
+            }
         });
     }
 
@@ -209,31 +169,91 @@
             row.style.setProperty('--index', index);
         });
     });
+
+    // Add these new variables
+    let modelPrediction = null;
+    let modelLoading = false;
+
+    async function getPrediction() {
+        modelLoading = true;
+        try {
+            // Example inputs - replace with actual features your model expects
+            const inputs = [[
+                // parseFloat(interpolatedValue), // Solar irradiance
+                25.86,
+                0.018576382,
+                0.0162,
+                21.851
+                // Add other required features here
+                // Your model expects 4 features total
+            ]];
+
+            const response = await fetch('http://127.0.0.1:5000/predict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ inputs })
+            });
+
+            const data = await response.json();
+            if (data.predictions) {
+                modelPrediction = data.predictions[0];
+            } else {
+                throw new Error('No predictions in response');
+            }
+        } catch (err) {
+            console.error('Failed to get model prediction:', err);
+            modelPrediction = null;
+        } finally {
+            modelLoading = false;
+        }
+    }
+
+    // Watch interpolatedValue changes to trigger prediction
+    $: if (interpolatedValue) {
+        getPrediction();
+    }
 </script>
 
-<div class="solar-section" in:slide={{duration: 300, delay: 400}}>
-    <div class="header">
-        <div class="title-container">
-            <h2>Solar Irradiance Data</h2>
+<div class="solar-section glass" in:slide={{duration: 300, delay: 400}}>
+    <div class="section-header">
+        <div class="title-badge">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="5"/>
+                <line x1="12" y1="1" x2="12" y2="3"/>
+                <line x1="12" y1="21" x2="12" y2="23"/>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                <line x1="1" y1="12" x2="3" y2="12"/>
+                <line x1="21" y1="12" x2="23" y2="12"/>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+            <h2>Solar Irradiance</h2>
         </div>
-        <div class="interpolator-controls glass">
-            <div class="date-picker">
-                <label for="date-input">Select Date:</label>
-                <input 
-                    type="date" 
-                    id="date-input"
-                    bind:value={selectedDate}
-                >
-            </div>
-            <div class="interpolated-value">
-                <span>Estimated Value:</span>
-                <strong>{interpolatedValue.toFixed(2)} kWh/m²/day</strong>
+        
+        <div class="date-control">
+            <input 
+                type="date" 
+                id="date-input"
+                bind:value={selectedDate}
+            >
+            <div class="estimated-value">
+                <span class="estimate-label">Estimated Value</span>
+                <span class="estimate-number">{interpolatedValue.toFixed(2)}</span>
+                <span class="estimate-unit">kWh/m²/day</span>
             </div>
         </div>
     </div>
-    
-    <div class="content">
-        <div class="table-container">
+
+    <div class="content-grid" class:loading={loadingIrradiance}>
+        {#if loadingIrradiance}
+            <div class="loading-overlay">
+                <div class="loading-spinner"></div>
+            </div>
+        {/if}
+        <div class="data-table">
             <table>
                 <thead>
                     <tr>
@@ -272,104 +292,183 @@
             </table>
         </div>
         
-        <div class="chart-container" id="chart-container">
+        <div class="chart-wrapper">
             <canvas bind:this={chartCanvas}></canvas>
         </div>
     </div>
+
+    {#if modelLoading}
+        <div class="model-prediction loading">
+            <div class="loading-spinner"></div>
+            <span>Calculating prediction...</span>
+        </div>
+    {:else if modelPrediction !== null}
+        <div class="model-prediction">
+            <h3>Model Prediction</h3>
+            <div class="prediction-value">{modelPrediction.toFixed(2)}</div>
+        </div>
+    {/if}
 </div>
 
 <style>
     .solar-section {
-        margin: 2rem 0;
-        border-radius: 20px;
-        background: rgba(0, 0, 0, 0.2);
-        backdrop-filter: blur(10px);
-        padding: 30px;
-        width: 100%;
-        box-sizing: border-box;
+        background: rgba(26, 26, 46, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 24px;
+        padding: 1.5rem;
+        height: 100%;
+        max-height: 100%;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
     }
 
-    .header {
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .title-badge {
         display: flex;
         align-items: center;
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-        padding: 0px;
+        gap: 0.75rem;
+        background: rgba(76, 0, 255, 0.15);
+        padding: 0.75rem 1.25rem;
+        border-radius: 12px;
+        border: 1px solid rgba(76, 0, 255, 0.2);
     }
 
-    .title-container {
-        background: rgba(76, 0, 255, 0.15);
-        padding: 0.6rem 1.2rem;
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        border: 1px solid rgba(76, 0, 255, 0.2);
+    .title-badge svg {
+        color: rgba(76, 0, 255, 0.9);
     }
 
     h2 {
         font-size: 1.2rem;
-        margin: 0;
-        white-space: nowrap;
-        color: rgba(76, 0, 255, 0.9);
         font-weight: 600;
-    }
-
-    .interpolator-controls {
-        flex: 1;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 15px 25px;
-        background: rgba(0, 0, 0, 0.1);
-        border-radius: 12px;
+        color: rgba(76, 0, 255, 0.9);
         margin: 0;
     }
 
-    .content {
-        display: grid;
-        grid-template-columns: 360px 1fr; /* Changed from 300px to 330px */
+    .date-control {
+        display: flex;
+        align-items: center;
         gap: 2rem;
-        align-items: start;
+        background: rgba(255, 255, 255, 0.03);
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
     }
 
-    .chart-container {
-        position: relative;
-        height: 600px;
-        background: rgba(0, 0, 0, 0.3);
-        border-radius: 15px;
+    input[type="date"] {
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        color: white;
+        padding: 0.5rem 0.75rem;
+        font-family: inherit;
+    }
+
+    .estimated-value {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .estimate-label {
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.5);
+    }
+
+    .estimate-number {
+        font-size: 1.4rem;
+        font-weight: 700;
+        background: linear-gradient(90deg, #fff, #a8b1ff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .estimate-unit {
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.6);
+    }
+
+    .content-grid {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 1.5rem;
         overflow: hidden;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-        padding: 1.5rem;
+        flex: 1;
+        min-height: 0; /* Important for nested scroll containers */
+        position: relative;
     }
 
-    .table-container {
-        /* Remove the margin-top */
-        margin-top: 0;
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(26, 26, 46, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+        backdrop-filter: blur(3px);
+        border-radius: 12px;
+    }
+
+    .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(255, 255, 255, 0.1);
+        border-top: 3px solid rgba(76, 0, 255, 0.6);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    .content-grid.loading {
+        opacity: 0.7;
+        pointer-events: none;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .chart-wrapper {
+        position: relative;
+        height: 400px; /* Fixed height */
+        max-height: 100%; /* Prevent infinite growth */
+        overflow: hidden; /* Prevent content overflow */
+    }
+
+    .data-table {
         background: rgba(0, 0, 0, 0.2);
         border-radius: 15px;
         padding: 1.5rem;
-        /* Ensure full height and proper overflow */
-        height: 600px;
+        height: 100%;
         overflow-y: auto;
-        /* Add smooth scrolling */
         scroll-behavior: smooth;
+        max-height: 100%;
     }
 
-    /* Update scrollbar for table container */
-    .table-container::-webkit-scrollbar {
+    .data-table::-webkit-scrollbar {
         width: 8px;
     }
 
-    .table-container::-webkit-scrollbar-track {
+    .data-table::-webkit-scrollbar-track {
         background: rgba(255, 255, 255, 0.05);
         border-radius: 4px;
     }
 
-    .table-container::-webkit-scrollbar-thumb {
+    .data-table::-webkit-scrollbar-thumb {
         background: rgba(76, 0, 255, 0.3);
         border-radius: 4px;
     }
 
-    .table-container::-webkit-scrollbar-thumb:hover {
+    .data-table::-webkit-scrollbar-thumb:hover {
         background: rgba(76, 0, 255, 0.5);
     }
 
@@ -432,18 +531,17 @@
         display: flex;
         align-items: center;
         gap: 0.5rem;
-        /* Reduce min-height if needed */
         min-height: 24px;
     }
 
     .month-name {
-        width: 80px; /* Fixed width for all month names */
+        width: 80px;
         font-size: 0.9rem;
         white-space: nowrap;
     }
 
     .annual-average .month-name {
-        font-size: 0.85rem; /* Slightly smaller font for annual average */
+        font-size: 0.85rem;
     }
 
     .month-bar {
@@ -482,7 +580,6 @@
         transform: scale(1.05);
     }
 
-    /* Optional: Add animation for rows */
     @keyframes fadeIn {
         from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
@@ -492,5 +589,33 @@
         animation: fadeIn 0.3s ease-out forwards;
         animation-delay: calc(var(--index, 0) * 0.05s);
         opacity: 0;
+    }
+
+    .model-prediction {
+        background: rgba(76, 0, 255, 0.1);
+        border: 1px solid rgba(76, 0, 255, 0.2);
+        border-radius: 12px;
+        padding: 1rem;
+        margin-top: 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .model-prediction h3 {
+        margin: 0;
+        color: rgba(76, 0, 255, 0.9);
+        font-size: 1rem;
+    }
+
+    .prediction-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: rgba(76, 0, 255, 0.9);
+    }
+
+    .model-prediction.loading {
+        opacity: 0.7;
     }
 </style>
