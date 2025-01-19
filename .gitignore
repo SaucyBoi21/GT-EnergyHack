@@ -2,3 +2,6 @@
 /model/venv
 *.env
 *.venv
+.python-version
+.DS_Store
+/model/random_forest_model.pkl

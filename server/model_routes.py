@@ -6,7 +6,7 @@ import numpy as np
 app = Flask(__name__)
 
 # Load the trained TensorFlow model
-model = tf.keras.models.load_model('path_to_your_model')
+model = tf.keras.models.load_model('../model/random_forest_model.pkl')
 
 @app.route('/predict', methods=['POST'])
 def predict():
