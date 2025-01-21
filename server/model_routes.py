@@ -8,7 +8,7 @@ app = Flask(__name__)
 # Load the trained TensorFlow model
 model = tf.keras.models.load_model('path_to_your_model')
 
-@app.route('/predict', methods=['POST'])
+@app.route('api/predict', methods=['POST'])
 def predict():
     try:
         # Get JSON data from the request
