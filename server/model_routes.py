@@ -19,7 +19,7 @@ except FileNotFoundError:
     print(f"Error: Model file not found at {model_path}")
     model = None
 
-@app.route('/predict', methods=['POST'])
+@app.route('api/predict', methods=['POST'])
 def predict():
     print("\n=== New Prediction Request ===")
     print(f"Method: {request.method}")
